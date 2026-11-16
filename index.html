@@ -23,59 +23,102 @@ const L = 400, A = 600;          // largura e altura do jogo
 const CHAO = 540;                // altura do chão
 
 // ===== Cores do Rafa =====
-const LARANJA = '#ff7a00', LIMAO = '#d4ff2a', MARINHO = '#1b2a4a';
-const PALETA = { O: LARANJA, Y: LIMAO, N: MARINHO, S: '#c68642', K: '#111111', W: '#ffffff' };
+const LARANJA = '#ff7a00', LIMAO = '#c8f03c', MARINHO = '#1b2a4a';
+// K contorno, H cabelo, S pele, D sombra da pele, W branco, B/b camiseta azul, Y estampa limão, O detalhe laranja, N calça, G tênis
+const PALETA = {"K": "#1a1a1a", "H": "#16110e", "S": "#9a6440", "D": "#74472b", "W": "#ffffff", "B": "#2563d9", "b": "#1a47a8", "Y": "#c8f03c", "O": "#ff7a00", "N": "#1b2a4a", "G": "#e6e6e6"};
 
 // ===== Rafa em pixel art 32x32 (cada letra é um pixel, "." é vazio) =====
-const CABECA_E_CORPO = [
-  '', '',
-  '...........KKKKKKKK',
-  '.........KKOOOOOOOOKK',
-  '........KOOOOOOOOOOOOK',
-  '.......KOOOOOOYYYOOOOOK',          // boné grande com emblema
-  '.......KOOOOOOYYYOOOOOKKKKK',
-  '.......KOOOOOOOOOOOOOOOOOOOOK',    // aba do boné
-  '.......KKKKKKKKKKKKKKKKKKKKKK',
-  '........KSSSSSSSSSSSSSK',
-  '........KSSSSSSSSKWSSSK',          // olho atento
-  '........KSSSSSSSSKKSSSK',
-  '........KSSSSSSSSSSSSSK',
-  '........KSSSSSSSKSSSKSK',          // sorriso brincalhão
-  '........KSSSSSSSSKKKSSK',
-  '.........KSSSSSSSSSSSK',
-  '..........KKKSSSSKKKK',
-  '........KNYYYYNNNYYYYNK',          // colete amarelo-limão
-  '.......KNNYYYYNNNYYYYNNK',
-  '.......KNNOOOONNNOOOONNK',         // faixa refletiva laranja
-  '.......KNNYYYYNNNYYYYNNK',
-  '.......KSKYYYYYNYYYYYKSK',         // mãos
-  '.......KSKYYYYYNYYYYYKSK',
-  '........KKNNNNNNNNNNNKK',
+// cabeça do menino: cabelo curto e sorriso grande
+const CABECA_MENINO = [
+  '................................',
+  '............KKKKKKKK............',
+  '..........KKHHHHHHHHKK..........',
+  '.........KHHHHHHHHHHHHK.........',
+  '.........KHHHHHHHHHHHHK.........',
+  '........KHHSSSSSSSSSSHHK........',
+  '........KHSSSSSSSSSSSSHK........',
+  '........KSSSHHSSSSHHSSSK........',
+  '.......KDSSKWKSSSSKWKSSDK.......',
+  '.......KDSSSSSSSSSSSSSSDK.......',
+  '........KSSSSSSDDSSSSSSK........',
+  '........KSSSKWWWWWWKSSSK........',
+  '........KSSSSKKKKKKSSSSK........',
+  '.........KSSSSSSSSSSSSK.........',
+  '..........KKDSSSSSSDKK..........',
+  '............KDSSSSDK............',
+];
+// cabeça da menina: cabelo comprido até os ombros e presilha laranja
+const CABECA_MENINA = [
+  '................................',
+  '............KKKKKKKK............',
+  '..........KKHHHHHHHHKK..........',
+  '.........KHHHHHHHHHHOOK.........',
+  '........KHHHHHHHHHHHOOHK........',
+  '........KHHHSSSSSSSSHHHK........',
+  '.......KHHSSSSSSSSSSSSHHK.......',
+  '.......KHSSSHHSSSSHHSSSHK.......',
+  '.......KHSSKWKSSSSKWKSSHK.......',
+  '.......KHSSSSSSSSSSSSSSHK.......',
+  '.......KHSSSSSSDDSSSSSSHK.......',
+  '.......KHSSSKWWWWWWKSSSHK.......',
+  '.......KHSSSSKKKKKKSSSSHK.......',
+  '.......KHHSSSSSSSSSSSSHHK.......',
+  '.......KHHHKKDSSSSDKKHHHK.......',
+  '.......KHHHHKDSSSSDKHHHHK.......',
+];
+// corpo: camiseta azul com estampa (igual para os dois)
+const CORPO = [
+  '........KKKKBBKSSKBBKKKK........',
+  '.......KBBBBBBBKKBBBBBBBK.......',
+  '......KBBBBBBBBBBBBBBBBBBK......',
+  '......KBBBBYYYYYYYYOBBBBBK......',
+  '......KSKBBYYYYYYYYYBBBKSK......',
+  '......KSKBBBBYYYYYYBBBBKSK......',
+  '......KSKBBBBBBBBBBBBBBKSK......',
+  '......KKKbbbbbbbbbbbbbbKKK......',
+  '.........KNNNNNNNNNNNNK.........',
 ];
 // quadro 1: pernas abertas
 const PERNAS_1 = [
-  '.........KNNNNNNNNNNNK',
-  '........KNNNNK..KNNNNK',
-  '........KNNNK....KNNNK',
-  '.......KNNNK......KNNNK',
-  '......KKKKKK......KKKKKK',
-  '......KKKKKK......KKKKKK',
+  '........KNNNNNK..KNNNNNK........',
+  '........KNNNNK....KNNNNK........',
+  '.......KNNNNK......KNNNNK.......',
+  '.......KNNNNK......KNNNNK.......',
+  '......KGGGGGK......KGGGGGK......',
+  '......KKKKKKK......KKKKKKK......',
+  '................................',
 ];
 // quadro 2: pernas juntas
 const PERNAS_2 = [
-  '..........KNNNNNNNNNK',
-  '..........KNNNNNNNNK',
-  '...........KNNNNNNK',
-  '...........KNNKNNNK',
-  '..........KKKKKKKKK',
-  '..........KKKKKKKKK',
+  '.........KNNNNNNNNNNNNK.........',
+  '..........KNNNNNNNNNNK..........',
+  '..........KNNNNKNNNNNK..........',
+  '..........KNNNNKKNNNNK..........',
+  '.........KGGGGGKKGGGGGK.........',
+  '.........KKKKKKKKKKKKKK.........',
+  '................................',
 ];
-const QUADROS = [CABECA_E_CORPO.concat(PERNAS_1), CABECA_E_CORPO.concat(PERNAS_2)];
+// monta os 2 quadros de andar para cada gênero
+const QUADROS = {
+  menino: [CABECA_MENINO.concat(CORPO, PERNAS_1), CABECA_MENINO.concat(CORPO, PERNAS_2)],
+  menina: [CABECA_MENINA.concat(CORPO, PERNAS_1), CABECA_MENINA.concat(CORPO, PERNAS_2)],
+};
 
-// desenha o Rafa: x,y = canto de cima à esquerda; cada pixel vira 2x2
-function desenharPersonagem(x, y) {
-  const desenho = QUADROS[rafa.quadro];
-  const tam = 2;
+// ===== Tons de pele que o jogador pode escolher (cor e sombra) =====
+const PELES = [
+  { S: '#f1c9a5', D: '#d9a77f' },
+  { S: '#d8a36f', D: '#b98250' },
+  { S: '#9a6440', D: '#74472b' },
+  { S: '#6b4226', D: '#4e2e19' },
+  { S: '#4a2c1a', D: '#2f1c10' },
+];
+// escolha feita na tela inicial
+const escolha = { genero: 'menino', pele: 2 };
+
+// desenha o personagem: x,y = canto de cima à esquerda; cada pixel vira tam x tam
+function desenharPersonagem(x, y, tam = 2) {
+  const desenho = QUADROS[escolha.genero][rafa.quadro];
+  const cores = Object.assign({}, PALETA, PELES[escolha.pele]);   // troca a cor da pele
   ctx.save();
   if (rafa.olhandoEsquerda) {        // vira o desenho quando anda para a esquerda
     ctx.translate(x + 32 * tam, y);
@@ -84,7 +127,7 @@ function desenharPersonagem(x, y) {
   }
   for (let lin = 0; lin < desenho.length; lin++) {
     for (let col = 0; col < desenho[lin].length; col++) {
-      const cor = PALETA[desenho[lin][col]];
+      const cor = cores[desenho[lin][col]];
       if (cor) { ctx.fillStyle = cor; ctx.fillRect(x + col * tam, y + lin * tam, tam, tam); }
     }
   }
@@ -108,6 +151,12 @@ function recomecar() {
 addEventListener('keydown', e => {
   teclas[e.key] = true;
   if ((e.key === ' ' || e.key === 'Enter') && estado !== 'jogando') recomecar();
+  // na tela inicial: ↑ ↓ trocam o gênero, ← → trocam a cor da pele
+  if (estado === 'inicio') {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') escolha.genero = escolha.genero === 'menino' ? 'menina' : 'menino';
+    if (e.key === 'ArrowLeft') escolha.pele = (escolha.pele + PELES.length - 1) % PELES.length;
+    if (e.key === 'ArrowRight') escolha.pele = (escolha.pele + 1) % PELES.length;
+  }
   if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
 });
 addEventListener('keyup', e => { teclas[e.key] = false; });
@@ -118,9 +167,24 @@ function posToque(ev) {
   const r = tela.getBoundingClientRect();
   return (ev.clientX - r.left) * (L / r.width);
 }
+function posToqueY(ev) {
+  const r = tela.getBoundingClientRect();
+  return (ev.clientY - r.top) * (A / r.height);
+}
+// confere se o ponto (px, py) está dentro de um retângulo
+function dentro(px, py, b) { return px >= b.x && px <= b.x + b.l && py >= b.y && py <= b.y + b.a; }
+
 tela.addEventListener('pointerdown', ev => {
-  if (estado !== 'jogando') { recomecar(); return; }
-  toqueX = posToque(ev);
+  const px = posToque(ev), py = posToqueY(ev);
+  if (estado === 'inicio') {                     // cliques da tela de escolha
+    if (dentro(px, py, BOTAO_MENINO)) escolha.genero = 'menino';
+    if (dentro(px, py, BOTAO_MENINA)) escolha.genero = 'menina';
+    PELES.forEach((p, i) => { if (dentro(px, py, quadradoPele(i))) escolha.pele = i; });
+    if (dentro(px, py, BOTAO_JOGAR)) recomecar();
+    return;
+  }
+  if (estado === 'fim') { recomecar(); return; }
+  toqueX = px;
 });
 tela.addEventListener('pointermove', ev => { if (toqueX !== null) toqueX = posToque(ev); });
 addEventListener('pointerup', () => { toqueX = null; });
@@ -244,6 +308,41 @@ function desenharBotao(t) {
   textoCentro(t, 413, 22, '#111');
 }
 
+// ===== Tela de escolha do personagem =====
+const BOTAO_MENINO = { x: 60, y: 330, l: 130, a: 40 };
+const BOTAO_MENINA = { x: 210, y: 330, l: 130, a: 40 };
+const BOTAO_JOGAR = { x: 110, y: 480, l: 180, a: 50 };
+function quadradoPele(i) { return { x: 65 + i * 56, y: 410, l: 44, a: 44 }; }
+
+function desenharEscolha() {
+  ctx.fillStyle = 'rgba(13,21,38,0.85)'; ctx.fillRect(20, 40, L - 40, 510);   // painel
+  textoCentro('PEGA-CARGA', 95, 40, LARANJA);
+  textoCentro('Monte seu personagem', 125, 16, '#fff');
+  // prévia grande do personagem (pixels 4x4)
+  rafa.olhandoEsquerda = false;
+  desenharPersonagem(L / 2 - 64, 165, 4);
+  // botões de gênero (o escolhido fica laranja)
+  textoCentro('Gênero  (↑ ↓)', 320, 14, LIMAO);
+  [[BOTAO_MENINO, 'MENINO', 'menino'], [BOTAO_MENINA, 'MENINA', 'menina']].forEach(([b, t, g]) => {
+    ctx.fillStyle = escolha.genero === g ? LARANJA : '#2b3b63';
+    ctx.fillRect(b.x, b.y, b.l, b.a);
+    ctx.font = 'bold 18px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = escolha.genero === g ? '#111' : '#fff';
+    ctx.fillText(t, b.x + b.l / 2, b.y + 27);
+  });
+  // quadrados com os tons de pele (o escolhido tem borda limão)
+  textoCentro('Cor da pele  (← →)', 400, 14, LIMAO);
+  PELES.forEach((p, i) => {
+    const q = quadradoPele(i);
+    if (escolha.pele === i) { ctx.fillStyle = LIMAO; ctx.fillRect(q.x - 4, q.y - 4, q.l + 8, q.a + 8); }
+    ctx.fillStyle = p.S; ctx.fillRect(q.x, q.y, q.l, q.a);
+  });
+  // botão jogar
+  ctx.fillStyle = LARANJA; ctx.fillRect(BOTAO_JOGAR.x, BOTAO_JOGAR.y, BOTAO_JOGAR.l, BOTAO_JOGAR.a);
+  textoCentro('JOGAR', BOTAO_JOGAR.y + 33, 22, '#111');
+  textoCentro('Pegue as caixas, fuja das vermelhas!', 545, 13, '#fff');
+}
+
 // ===== Desenha tudo =====
 function desenhar() {
   ctx.save();
@@ -252,12 +351,7 @@ function desenhar() {
   desenharChao();
 
   if (estado === 'inicio') {
-    desenharPersonagem(rafa.x, rafa.y);
-    textoCentro('PEGA-CARGA', 230, 44, LARANJA);
-    textoCentro('Ajude o Rafa a pegar as caixas', 280, 16, '#fff');
-    textoCentro('Fuja das caixas vermelhas!', 305, 16, '#ff8080');
-    textoCentro('← → ou toque na tela', 340, 14, LIMAO);
-    desenharBotao('JOGAR');
+    desenharEscolha();
   } else {
     cargas.forEach(desenharCarga);
     // Rafa pisca depois de perder vida
