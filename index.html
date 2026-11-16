@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Pega-Carga</title>
+<style>
+  /* página escura e jogo centralizado */
+  html, body { margin: 0; height: 100%; background: #0d1526; }
+  body { display: flex; justify-content: center; align-items: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* o canvas se ajusta à largura e à altura da tela */
+  canvas { width: min(100vw, 66.6vh); height: auto; image-rendering: pixelated; display: block; }
+</style>
+</head>
+<body>
+<canvas id="tela" width="400" height="600"></canvas>
+<script>
+// ===== Configuração básica =====
+const tela = document.getElementById('tela');
+const ctx = tela.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const L = 400, A = 600;          // largura e altura do jogo
+const CHAO = 540;                // altura do chão
+
+// ===== Cores do Rafa =====
+const LARANJA = '#ff7a00', LIMAO = '#d4ff2a', MARINHO = '#1b2a4a';
+const PALETA = { O: LARANJA, Y: LIMAO, N: MARINHO, S: '#c68642', K: '#111111', W: '#ffffff' };
+
+// ===== Rafa em pixel art 32x32 (cada letra é um pixel, "." é vazio) =====
+const CABECA_E_CORPO = [
+  '', '',
+  '...........KKKKKKKK',
+  '.........KKOOOOOOOOKK',
+  '........KOOOOOOOOOOOOK',
+  '.......KOOOOOOYYYOOOOOK',          // boné grande com emblema
+  '.......KOOOOOOYYYOOOOOKKKKK',
+  '.......KOOOOOOOOOOOOOOOOOOOOK',    // aba do boné
+  '.......KKKKKKKKKKKKKKKKKKKKKK',
+  '........KSSSSSSSSSSSSSK',
+  '........KSSSSSSSSKWSSSK',          // olho atento
+  '........KSSSSSSSSKKSSSK',
+  '........KSSSSSSSSSSSSSK',
+  '........KSSSSSSSKSSSKSK',          // sorriso brincalhão
+  '........KSSSSSSSSKKKSSK',
+  '.........KSSSSSSSSSSSK',
+  '..........KKKSSSSKKKK',
+  '........KNYYYYNNNYYYYNK',          // colete amarelo-limão
+  '.......KNNYYYYNNNYYYYNNK',
+  '.......KNNOOOONNNOOOONNK',         // faixa refletiva laranja
+  '.......KNNYYYYNNNYYYYNNK',
+  '.......KSKYYYYYNYYYYYKSK',         // mãos
+  '.......KSKYYYYYNYYYYYKSK',
+  '........KKNNNNNNNNNNNKK',
+];
+// quadro 1: pernas abertas
+const PERNAS_1 = [
+  '.........KNNNNNNNNNNNK',
+  '........KNNNNK..KNNNNK',
+  '........KNNNK....KNNNK',
+  '.......KNNNK......KNNNK',
+  '......KKKKKK......KKKKKK',
+  '......KKKKKK......KKKKKK',
+];
+// quadro 2: pernas juntas
+const PERNAS_2 = [
+  '..........KNNNNNNNNNK',
+  '..........KNNNNNNNNK',
+  '...........KNNNNNNK',
+  '...........KNNKNNNK',
+  '..........KKKKKKKKK',
+  '..........KKKKKKKKK',
+];
+const QUADROS = [CABECA_E_CORPO.concat(PERNAS_1), CABECA_E_CORPO.concat(PERNAS_2)];
+
+// desenha o Rafa: x,y = canto de cima à esquerda; cada pixel vira 2x2
+function desenharPersonagem(x, y) {
+  const desenho = QUADROS[rafa.quadro];
+  const tam = 2;
+  ctx.save();
+  if (rafa.olhandoEsquerda) {        // vira o desenho quando anda para a esquerda
+    ctx.translate(x + 32 * tam, y);
+    ctx.scale(-1, 1);
+    x = 0; y = 0;
+  }
+  for (let lin = 0; lin < desenho.length; lin++) {
+    for (let col = 0; col < desenho[lin].length; col++) {
+      const cor = PALETA[desenho[lin][col]];
+      if (cor) { ctx.fillStyle = cor; ctx.fillRect(x + col * tam, y + lin * tam, tam, tam); }
+    }
+  }
+  ctx.restore();
+}
+
+// ===== Estado do jogo =====
+let estado = 'inicio';   // inicio, jogando, fim
+let pontos, vidas, cargas, tempoNovaCarga, velocidade, tremor, avisos;
+const rafa = { x: 168, y: CHAO - 62, vel: 5, quadro: 0, passo: 0, olhandoEsquerda: false, piscar: 0 };
+const teclas = {};
+
+function recomecar() {
+  pontos = 0; vidas = 3; cargas = []; tempoNovaCarga = 0;
+  velocidade = 2; tremor = 0; avisos = [];
+  rafa.x = 168; rafa.piscar = 0;
+  estado = 'jogando';
+}
+
+// ===== Controles: teclado =====
+addEventListener('keydown', e => {
+  teclas[e.key] = true;
+  if ((e.key === ' ' || e.key === 'Enter') && estado !== 'jogando') recomecar();
+  if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
+});
+addEventListener('keyup', e => { teclas[e.key] = false; });
+
+// ===== Controles: toque (segurar lado esquerdo ou direito da tela) =====
+let toqueX = null;
+function posToque(ev) {
+  const r = tela.getBoundingClientRect();
+  return (ev.clientX - r.left) * (L / r.width);
+}
+tela.addEventListener('pointerdown', ev => {
+  if (estado !== 'jogando') { recomecar(); return; }
+  toqueX = posToque(ev);
+});
+tela.addEventListener('pointermove', ev => { if (toqueX !== null) toqueX = posToque(ev); });
+addEventListener('pointerup', () => { toqueX = null; });
+addEventListener('pointercancel', () => { toqueX = null; });
+
+// ===== Cargas que caem =====
+function criarCarga() {
+  const ruim = Math.random() < 0.25;            // 1 em cada 4 é carga avariada
+  cargas.push({ x: 20 + Math.random() * (L - 60), y: -30, tam: 28, ruim });
+}
+
+// ===== Atualiza a lógica a cada quadro =====
+function atualizar() {
+  // move o Rafa
+  let andando = false;
+  if (teclas['ArrowLeft'] || teclas['a'] || (toqueX !== null && toqueX < rafa.x + 32)) {
+    rafa.x -= rafa.vel; rafa.olhandoEsquerda = true; andando = true;
+  }
+  if (teclas['ArrowRight'] || teclas['d'] || (toqueX !== null && toqueX > rafa.x + 32)) {
+    rafa.x += rafa.vel; rafa.olhandoEsquerda = false; andando = true;
+  }
+  rafa.x = Math.max(0, Math.min(L - 64, rafa.x));
+
+  // alterna os 2 quadros de andar
+  if (andando && ++rafa.passo % 8 === 0) rafa.quadro = 1 - rafa.quadro;
+  if (!andando) rafa.quadro = 0;
+
+  // cria novas cargas e aumenta a dificuldade aos poucos
+  if (--tempoNovaCarga <= 0) {
+    criarCarga();
+    tempoNovaCarga = Math.max(25, 70 - pontos);
+  }
+  velocidade = 2 + pontos * 0.05;
+
+  // move as cargas e confere se o Rafa pegou
+  for (let i = cargas.length - 1; i >= 0; i--) {
+    const c = cargas[i];
+    c.y += velocidade;
+    const pegou = c.y + c.tam > rafa.y + 10 && c.y < rafa.y + 40 &&
+                  c.x + c.tam > rafa.x + 12 && c.x < rafa.x + 52;
+    if (pegou) {
+      cargas.splice(i, 1);
+      if (c.ruim) perderVida(c.x, 'Avariada!');
+      else { pontos++; avisos.push({ x: c.x, y: c.y, texto: '+1', cor: LIMAO, t: 40 }); }
+    } else if (c.y > CHAO) {
+      cargas.splice(i, 1);
+      if (!c.ruim) perderVida(c.x, 'Caiu!');
+    }
+  }
+
+  // efeitos visuais
+  if (tremor > 0) tremor--;
+  if (rafa.piscar > 0) rafa.piscar--;
+  avisos.forEach(a => { a.y -= 1; a.t--; });
+  avisos = avisos.filter(a => a.t > 0);
+}
+
+function perderVida(x, texto) {
+  vidas--; tremor = 15; rafa.piscar = 40;
+  avisos.push({ x, y: CHAO - 80, texto, cor: '#ff4d4d', t: 50 });
+  if (vidas <= 0) estado = 'fim';
+}
+
+// ===== Cenário: armazém à noite =====
+function desenharFundo() {
+  ctx.fillStyle = '#16223d'; ctx.fillRect(0, 0, L, A);          // parede
+  // prateleiras com caixas paradas
+  for (let p = 0; p < 3; p++) {
+    const py = 150 + p * 110;
+    ctx.fillStyle = '#2b3b63'; ctx.fillRect(0, py, L, 8);
+    for (let i = 0; i < 9; i++) {
+      ctx.fillStyle = (i + p) % 3 ? '#5a4632' : '#6b5238';
+      ctx.fillRect(10 + i * 44, py - 30, 34, 30);
+    }
+  }
+  // luzes do teto
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = '#ffe9a8'; ctx.fillRect(40 + i * 100, 40, 40, 6);
+  }
+}
+
+function desenharChao() {
+  ctx.fillStyle = '#3a4250'; ctx.fillRect(0, CHAO, L, A - CHAO);
+  // faixa de segurança amarela e preta
+  for (let i = 0; i < L; i += 30) {
+    ctx.fillStyle = LIMAO; ctx.fillRect(i, CHAO, 15, 8);
+    ctx.fillStyle = '#111'; ctx.fillRect(i + 15, CHAO, 15, 8);
+  }
+}
+
+function desenharCarga(c) {
+  if (c.ruim) {
+    ctx.fillStyle = '#8b2b2b'; ctx.fillRect(c.x, c.y, c.tam, c.tam);
+    ctx.strokeStyle = '#ffdddd'; ctx.lineWidth = 3;   // X de avariada
+    ctx.beginPath();
+    ctx.moveTo(c.x + 6, c.y + 6); ctx.lineTo(c.x + c.tam - 6, c.y + c.tam - 6);
+    ctx.moveTo(c.x + c.tam - 6, c.y + 6); ctx.lineTo(c.x + 6, c.y + c.tam - 6);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#c8955a'; ctx.fillRect(c.x, c.y, c.tam, c.tam);
+    ctx.fillStyle = '#9c6d3a'; ctx.fillRect(c.x + c.tam / 2 - 3, c.y, 6, c.tam);  // fita
+  }
+}
+
+function desenharPainel() {
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, L, 34);
+  ctx.font = 'bold 18px monospace'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff'; ctx.fillText('Pontos: ' + pontos, 10, 23);
+  ctx.textAlign = 'right'; ctx.fillStyle = LARANJA;
+  ctx.fillText('Vidas: ' + '♥'.repeat(Math.max(0, vidas)), L - 10, 23);
+}
+
+function textoCentro(t, y, tam, cor) {
+  ctx.font = 'bold ' + tam + 'px monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = cor; ctx.fillText(t, L / 2, y);
+}
+
+// botão Recomeçar / Jogar desenhado no canvas
+function desenharBotao(t) {
+  ctx.fillStyle = LARANJA; ctx.fillRect(L / 2 - 90, 380, 180, 50);
+  textoCentro(t, 413, 22, '#111');
+}
+
+// ===== Desenha tudo =====
+function desenhar() {
+  ctx.save();
+  if (tremor > 0) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+  desenharFundo();
+  desenharChao();
+
+  if (estado === 'inicio') {
+    desenharPersonagem(rafa.x, rafa.y);
+    textoCentro('PEGA-CARGA', 230, 44, LARANJA);
+    textoCentro('Ajude o Rafa a pegar as caixas', 280, 16, '#fff');
+    textoCentro('Fuja das caixas vermelhas!', 305, 16, '#ff8080');
+    textoCentro('← → ou toque na tela', 340, 14, LIMAO);
+    desenharBotao('JOGAR');
+  } else {
+    cargas.forEach(desenharCarga);
+    // Rafa pisca depois de perder vida
+    if (rafa.piscar % 8 < 5) desenharPersonagem(rafa.x, rafa.y);
+    avisos.forEach(a => {
+      ctx.font = 'bold 18px monospace'; ctx.textAlign = 'left';
+      ctx.fillStyle = a.cor; ctx.fillText(a.texto, a.x, a.y);
+    });
+    desenharPainel();
+    if (estado === 'fim') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, L, A);
+      textoCentro('FIM DE TURNO', 260, 36, LARANJA);
+      textoCentro('Você pegou ' + pontos + ' caixas', 310, 18, '#fff');
+      desenharBotao('RECOMEÇAR');
+    }
+  }
+  ctx.restore();
+}
+
+// ===== Laço principal =====
+function laco() {
+  if (estado === 'jogando') atualizar();
+  desenhar();
+  requestAnimationFrame(laco);
+}
+laco();
+</script>
+</body>
+</html>
